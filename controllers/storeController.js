@@ -78,7 +78,7 @@ exports.updateStore = async (req, res) => {
   // find and update the store
   const store = await Store.findByIdAndUpdate(req.params.id, req.body, {
     new: true, // return new store instead of old
-    runValidators: true``
+    runValidators: true
   }).exec();
 
   // Redirect user to store, tell them it worked
@@ -90,4 +90,13 @@ exports.getStoreBySlug = async (req, res, next) => {
   const store = await Store.findOne({ slug: req.params.slug });
   if(!store) return next();
   res.render('store', { store, title: store.name });
+};
+
+exports.getStoresByTag = async (req, res) => {
+  const selectedTag = req.params.tag;
+  const tagQuery = selectedTag || { $exists: true };
+  const tagsPromise = Store.getTagsList();
+  const storesPromise = Store.find({ tags: tagQuery });
+  const [ tags, stores] = await Promise.all([tagsPromise, storesPromise]);
+  res.render('tag', { tags, selectedTag, stores, title: 'Tags' });
 };
