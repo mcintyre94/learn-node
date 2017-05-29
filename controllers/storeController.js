@@ -44,10 +44,11 @@ exports.resize = async (req, res, next) => {
 
   // Once written to filesystem, continue
   next();
-  return;
-}
+};
 
 exports.createStore = async (req, res) => {
+  req.body.author = req.user._id;
+
   const store = await (new Store(req.body)).save();
   console.log(`It worked! ${store.slug}`);
   req.flash('success', `Successfully created ${store.name}. Care to leave a review?`);
@@ -61,11 +62,18 @@ exports.getStores = async (req, res) => {
   res.render('stores', { title: 'Stores', stores });
 };
 
+const confirmOwner = (store, user) => {
+  if(!store.author.equals(user._id)) {
+    throw Error('You must own a store in order to edit it');
+  }
+};
+
 exports.editStore = async (req, res) => {
   // Find store with the ID
   const store = await Store.findById(req.params.id);
 
   // Confirm user is owner of the store
+  confirmOwner(store, req.user);
 
   // Render edit form
   res.render('editStore', { title: `Edit ${store.name}`, store });
@@ -87,7 +95,7 @@ exports.updateStore = async (req, res) => {
 };
 
 exports.getStoreBySlug = async (req, res, next) => {
-  const store = await Store.findOne({ slug: req.params.slug });
+  const store = await Store.findOne({ slug: req.params.slug }).populate('author');
   if(!store) return next();
   res.render('store', { store, title: store.name });
 };
@@ -97,6 +105,6 @@ exports.getStoresByTag = async (req, res) => {
   const tagQuery = selectedTag || { $exists: true };
   const tagsPromise = Store.getTagsList();
   const storesPromise = Store.find({ tags: tagQuery });
-  const [ tags, stores] = await Promise.all([tagsPromise, storesPromise]);
+  const [tags, stores] = await Promise.all([tagsPromise, storesPromise]);
   res.render('tag', { tags, selectedTag, stores, title: 'Tags' });
 };
